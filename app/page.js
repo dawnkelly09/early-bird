@@ -29,12 +29,6 @@ export default function Home() {
               claim worms button here
             </div>
             <div>
-              touch screen button row for gameplay
-            </div>
-            <div>
-              modal
-            </div>
-            <div>
               claimed-toast
             </div>
             <div>
