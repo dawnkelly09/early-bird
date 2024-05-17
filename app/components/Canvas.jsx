@@ -1,17 +1,11 @@
 import { useRef, useState, useEffect } from 'react'
 import styles from "../globals.css";
-import { useContract, useSigner } from 'wagmi';
+
 
 const contractAddress = '0x9afe69f67958f2186864d98d1fee3ca3d880004d';
 const contractABI = [[ { "inputs": [ { "internalType": "uint256", "name": "totalWormsFound", "type": "uint256" } ], "name": "claimWorms", "outputs": [], "stateMutability": "nonpayable", "type": "function" }, { "inputs": [ { "internalType": "address", "name": "_tokenContractAddress", "type": "address" } ], "stateMutability": "nonpayable", "type": "constructor" }, { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "player", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "worms", "type": "uint256" } ], "name": "WormsClaimed", "type": "event" }, { "inputs": [], "name": "tokenContractAddress", "outputs": [ { "internalType": "address", "name": "", "type": "address" } ], "stateMutability": "view", "type": "function" } ]];
 
 const Canvas = () => {
-    const { data: signer } = useSigner();
-    const contract = useContract({
-        addressOrName: contractAddress,
-        contractInterface: contractABI,
-        signerOrProvider: signer
-    });
 
     const canvasRef = useRef();
     const ctx = canvasRef.current?.getContext('2d');
