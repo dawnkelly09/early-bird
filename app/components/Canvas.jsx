@@ -1,11 +1,25 @@
 import { useRef, useState, useEffect } from 'react'
+import styles from "../globals.css";
+import { useContract, useSigner } from 'wagmi';
+
+const contractAddress = '0x9afe69f67958f2186864d98d1fee3ca3d880004d';
+const contractABI = [[ { "inputs": [ { "internalType": "uint256", "name": "totalWormsFound", "type": "uint256" } ], "name": "claimWorms", "outputs": [], "stateMutability": "nonpayable", "type": "function" }, { "inputs": [ { "internalType": "address", "name": "_tokenContractAddress", "type": "address" } ], "stateMutability": "nonpayable", "type": "constructor" }, { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "player", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "worms", "type": "uint256" } ], "name": "WormsClaimed", "type": "event" }, { "inputs": [], "name": "tokenContractAddress", "outputs": [ { "internalType": "address", "name": "", "type": "address" } ], "stateMutability": "view", "type": "function" } ]];
 
 const Canvas = () => {
+    const { data: signer } = useSigner();
+    const contract = useContract({
+        addressOrName: contractAddress,
+        contractInterface: contractABI,
+        signerOrProvider: signer
+    });
+
     const canvasRef = useRef();
     const ctx = canvasRef.current?.getContext('2d');
     const [modalVisible, setModalVisible] = useState(false);
     const [robinPosition, setRobinPosition] = useState({ x: 0, y: 0 });
     const [background, setBackground] = useState(null);
+    const [worms, setWorms] = useState([]); // Holds worm positions
+    const [totalWormsFound, setTotalWormsFound] = useState(0); // Counts found worms
     
     // define canvas size
     const canvasWidth = 600;
@@ -21,7 +35,22 @@ const Canvas = () => {
         setBackground(img);
       };
     }, []);
-    
+
+    // Initialize worms positions
+    useEffect(() => {
+        const generateWorms = () => {
+            let newWorms = [];
+            for (let i = 0; i < 20; i++) {
+                const wormX = Math.floor(Math.random() * (600 / 50)) * 50;
+                const wormY = Math.floor(Math.random() * (600 / 50)) * 50;
+                newWorms.push({ x: wormX, y: wormY });
+                console.log(`Generated worm at position (${wormX}, ${wormY})`)
+            }
+            setWorms(newWorms);
+        };
+        generateWorms();
+    }, []);
+
     // Handle key presses and move robin
     useEffect(() => {
         const handleKeyDown = (event) => {
@@ -69,8 +98,8 @@ const Canvas = () => {
             ctx.drawImage(robinImg, x, y, 50, 50);
         };
     };
-    
-    
+
+
     // load images for worm and sad face
     const wormImage = new Image();
     wormImage.src = "https://cyan-interesting-takin-110.mypinata.cloud/ipfs/QmPn5sKKGL9pDv4qmTfe4HEvf37exJchnRAo8ygjKbhmNd";
@@ -79,81 +108,62 @@ const Canvas = () => {
     sadFaceImage.src = "https://cyan-interesting-takin-110.mypinata.cloud/ipfs/QmfZHhYKx6D2zgkfyXKpvPwRPxR9yaeyBbtFNP6jRt9xfb";
     
     
-    //define array to store worm positions
-    let worms = [];
-    
-    // define variable to track total worms found
-    let totalWormsFound = 0;
-    
-    //function to generate random worm positions
-    // set your condition check to equal desired # worms 
-        // i < 10 = 10 worms vs 1 < 20 = 20 worms, etc
-    // works similar to random move distance function but
-        // multiplies decimal x canvasWidth or canvasHeight to 
-        // assign coordinates for worms, then push (x,y) to array
-    function generateWorms() {
-        for (let i = 0; i < 20; i++) { // Generate 20 worms
-            // 50 is the pixel increment for moves. change as needed
-            const wormX = Math.floor(Math.random() * (canvasWidth / 50)) * 50;
-            const wormY = Math.floor(Math.random() * (canvasHeight / 50)) * 50;
-            worms.push({ x: wormX, y: wormY }); // Add worm position to the worms array
-            console.log(`Generated worm at position (${wormX}, ${wormY})`)
-        }
-    }
-    
-    // call generateWorms to populate the array of worm positions
-    generateWorms();
-    
     // draws a worm above the robin if worm is found
-    function drawWorm() {
-        const ctx = canvasRef.current?.getContext('2d');
-        ctx.drawImage(wormImage, robinX, robinY - 50, 50, 50);
-    }
+        const drawWorm = () => {
+            const ctx = canvasRef.current.getContext('2d');
+            ctx.drawImage(wormImage, robinPosition.x, robinPosition.y - 50, 50, 50);
+        };
+    
     // draws a sad face above the robin if no worm is found
-    function drawSadFace() {
-        const ctx = canvasRef.current?.getContext('2d');
-        ctx.drawImage(sadFaceImage, robinX, robinY - 50, 50, 50); 
-    }
+    const drawSadFace = () => {
+        const ctx = canvasRef.current.getContext('2d');
+        ctx.drawImage(sadFaceImage, robinPosition.x, robinPosition.y - 50, 50, 50);
+    };
     
-    
-    function checkForWorms(x, y) {
+    // Check for worms when "Yes" is clicked in the modal
+    const checkForWorms = () => {
+        const { x, y } = robinPosition;
         console.log(`Checking for worms at position (${x}, ${y})`);
-        // serves as a flag variable to indicate if a worm is found
-        let wormFound = false;
-        //for each position in array of worm positions
-        for (let i = 0; i < worms.length; i++) {
-            // use to test if position being check is expected coordinates
-            // console.log(`Checking worm at position (${worms[i].x}, ${worms[i].y})`);
-            //check if robin position matches a worm position
-            if (x === worms[i].x && y === worms[i].y) {
-                console.log("Found a worm!");
-                // remove the found worm from the array of worm positions
-                worms.splice(i, 1);
-                //increment player's total worms found
-                totalWormsFound++;
-                //update UI to display players total worms found
-                updateUI();
-                // set flag to true since worm is found
-                wormFound = true;
-                drawWorm();
-                // exit loop since can only collect one worm per move
-                break;
-            } 
-        }
-        // if no worm is found
-        if (!wormFound) {
+        const foundIndex = worms.findIndex(worm => worm.x === x && worm.y === y);
+        if (foundIndex !== -1) {
+            console.log("worm found!");
+            // Found a worm, remove it and increase count
+            setWorms(currentWorms => currentWorms.filter((_, index) => index !== foundIndex));
+            setTotalWormsFound(currentCount => currentCount + 1);
+            drawWorm();
+        } else {
+            console.log('sorry, no worm found')
             drawSadFace();
         }
-    }
+    };
+
+    const handleClaimWorms = async () => {
+        if (!signer) {
+            alert('Please connect your wallet first.');
+            return;
+        }
+
+        try {
+            const transactionResponse = await contract.claimWorms(totalWormsFound);
+            await transactionResponse.wait();  // Wait for the transaction to be mined
+            console.log('Worms claimed successfully');
+            // Reset worms count or handle other UI updates
+        } catch (error) {
+            console.error('Failed to claim worms:', error);
+            alert('Failed to claim worms. See console for more details.');
+        }
+    };
+
     
-    function updateUI() {
-        // update UI element to display player's total worms found
-        document.getElementById('worms-found').innerText = totalWormsFound
-    }
-
-
+    useEffect(() => {
+        
+            console.log("Total worms found:", totalWormsFound);
+        
+    }, [totalWormsFound]); // This effect runs whenever totalWormsFound changes.
+    
+    
     return (
-        <div>
+        <div className='game-intro'>
             {modalVisible && (
                 <div style={{ position: 'absolute', 
                               top: '75%', 
@@ -165,15 +175,34 @@ const Canvas = () => {
                               padding: "8px",
                             }}>
                     <p>Do you want to check here for worms?</p>
-                    <button onClick={() => setModalVisible(false)}>Yes</button>
+                    <button onClick={() => {
+                        checkForWorms(); 
+                        setModalVisible(false);
+                    }}>Yes</button>
                     <button onClick={() => setModalVisible(false)}>No</button>
                 </div>
             )}
+            <div class="score-box">
+                <p>Total worms found: <span>{totalWormsFound}</span></p>
+                <button onClick={handleClaimWorms}>Claim Worms</button>
+            </div>
             <div className="button-row">
-                <button onClick={() => setRobinPosition(prev => ({ x: prev.x, y: Math.max(0, prev.y - 50) }))}>UP ⬆️</button>
-                <button onClick={() => setRobinPosition(prev => ({ x: Math.max(0, prev.x - 50), y: prev.y }))}>LEFT ⬅️</button>
-                <button onClick={() => setRobinPosition(prev => ({ x: Math.min(canvasWidth - 50, prev.x + 50), y: prev.y }))}>RIGHT ➡️</button>
-                <button onClick={() => setRobinPosition(prev => ({ x: prev.x, y: Math.min(canvasHeight - 50, prev.y + 50) }))}>DOWN ⬇️</button>
+                <button onClick={() => {
+                    setRobinPosition(prev => ({ x: prev.x, y: Math.max(0, prev.y - 50) }));
+                    setTimeout(() => setModalVisible(true), 100); // Optional delay
+                }}>UP ⬆️</button>
+                <button onClick={() => {
+                    setRobinPosition(prev => ({ x: Math.max(0, prev.x - 50), y: prev.y }));
+                    setTimeout(() => setModalVisible(true), 100);
+                }}>LEFT ⬅️</button>
+                <button onClick={() => {
+                    setRobinPosition(prev => ({ x: Math.min(canvasWidth - 50, prev.x + 50), y: prev.y }));
+                    setTimeout(() => setModalVisible(true), 100);
+                }}>RIGHT ➡️</button>
+                <button onClick={() => {
+                    setRobinPosition(prev => ({ x: prev.x, y: Math.min(canvasHeight - 50, prev.y + 50) }));
+                    setTimeout(() => setModalVisible(true), 100);
+                }}>DOWN ⬇️</button>
             </div>
             <canvas ref={canvasRef} width={canvasWidth} height={canvasHeight} />
         </div>
